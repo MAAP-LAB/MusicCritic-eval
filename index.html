@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MusicCritic Human Evaluation</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.6; }
+
+.container { max-width: 800px; margin: 0 auto; padding: 20px; }
+h1 { text-align: center; margin: 20px 0 10px; font-size: 1.8em; }
+.subtitle { text-align: center; color: #64748b; margin-bottom: 30px; }
+
+.progress-bar { background: #e2e8f0; border-radius: 8px; height: 8px; margin-bottom: 20px; }
+.progress-fill { background: #2563eb; height: 100%; border-radius: 8px; transition: width 0.3s; }
+.progress-text { text-align: center; color: #64748b; font-size: 0.9em; margin-bottom: 20px; }
+
+.card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.card h2 { font-size: 1.2em; margin-bottom: 8px; }
+.description { background: #f1f5f9; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-style: italic; color: #475569; }
+
+.task-label { font-weight: 600; color: #2563eb; margin-bottom: 8px; font-size: 0.95em; }
+
+/* Audio players */
+.audio-row { display: flex; gap: 20px; margin-bottom: 16px; flex-wrap: wrap; }
+.audio-item { flex: 1; min-width: 300px; }
+.audio-item label { display: block; font-weight: 600; margin-bottom: 4px; }
+.audio-item audio { width: 100%; }
+
+/* MOS rating */
+.mos-group { display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+.mos-item { flex: 1; min-width: 300px; }
+.mos-item h3 { font-size: 0.95em; margin-bottom: 8px; }
+
+.rating-scale { display: flex; gap: 4px; margin-top: 4px; }
+.rating-btn { width: 48px; height: 40px; border: 2px solid #e2e8f0; border-radius: 8px; background: white; cursor: pointer; font-size: 1em; font-weight: 600; transition: all 0.15s; }
+.rating-btn:hover { border-color: #2563eb; background: #eff6ff; }
+.rating-btn.selected { border-color: #2563eb; background: #2563eb; color: white; }
+.rating-labels { display: flex; justify-content: space-between; font-size: 0.75em; color: #94a3b8; margin-top: 2px; }
+
+/* Preference */
+.pref-group { display: flex; gap: 12px; margin-top: 8px; }
+.pref-btn { flex: 1; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; background: white; cursor: pointer; font-size: 0.95em; font-weight: 500; transition: all 0.15s; text-align: center; }
+.pref-btn:hover { border-color: #2563eb; background: #eff6ff; }
+.pref-btn.selected { border-color: #2563eb; background: #2563eb; color: white; }
+
+/* Nav buttons */
+.nav { display: flex; gap: 12px; justify-content: center; margin-top: 20px; }
+.nav button { padding: 10px 24px; border: none; border-radius: 8px; font-size: 1em; cursor: pointer; font-weight: 500; }
+.btn-prev { background: #e2e8f0; color: #475569; }
+.btn-next { background: #2563eb; color: white; }
+.btn-next:disabled { background: #94a3b8; cursor: not-allowed; }
+.btn-submit { background: #16a34a; color: white; font-size: 1.1em; padding: 12px 32px; }
+
+/* Instructions */
+.instructions { background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+.instructions h3 { color: #92400e; margin-bottom: 8px; }
+.instructions li { margin-left: 20px; color: #78350f; }
+
+/* Results */
+.results { background: #f0fdf4; border: 1px solid #86efac; border-radius: 12px; padding: 24px; text-align: center; }
+.results h2 { color: #166534; margin-bottom: 12px; }
+#download-btn { padding: 12px 24px; background: #16a34a; color: white; border: none; border-radius: 8px; font-size: 1em; cursor: pointer; margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+<h1>MusicCritic Human Evaluation</h1>
+<p class="subtitle">Evaluate AI-generated music quality</p>
+
+<!-- Instructions page -->
+<div id="instructions-page">
+<div class="instructions">
+<h3>Instructions</h3>
+<ol>
+<li>You'll hear <strong>30 pairs</strong> of AI-generated music clips (15 seconds each).</li>
+<li>For each pair, you'll see the <strong>text description</strong> that was used to generate the music.</li>
+<li><strong>Task 1 — MOS Rating</strong>: Rate each sample (A and B) on a 1-5 scale for overall quality AND how well it matches the description.</li>
+<li><strong>Task 2 — Preference</strong>: Pick which sample (A, B, or No Preference) better matches the description.</li>
+<li>Use headphones if possible. Listen to at least 5 seconds of each clip.</li>
+<li>Your responses are saved locally — click "Download Results" when done.</li>
+</ol>
+</div>
+
+<div style="text-align:center; margin-top:20px;">
+<label>Evaluator ID: <input type="text" id="evaluator-id" placeholder="your name or ID" style="padding:8px; border:1px solid #ccc; border-radius:6px;"></label>
+</div>
+
+<div class="nav">
+<button class="btn-next" onclick="startEval()">Start Evaluation</button>
+</div>
+</div>
+
+<!-- Evaluation page -->
+<div id="eval-page" style="display:none;">
+<div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+<p class="progress-text" id="progress-text"></p>
+
+<div class="card" id="eval-card">
+<h2 id="pair-title"></h2>
+<div class="description" id="pair-description"></div>
+
+<!-- Task 1: MOS -->
+<div class="task-label">Task 1: Rate each sample (1=Bad, 5=Excellent)</div>
+
+<div class="mos-group">
+<div class="mos-item">
+<h3>Sample A</h3>
+<audio id="audio-a" controls preload="none"></audio>
+<div style="margin-top:8px;">
+<div style="font-size:0.85em; color:#64748b;">Overall Quality:</div>
+<div class="rating-scale" id="mos-a-quality"></div>
+<div class="rating-labels"><span>Bad</span><span>Poor</span><span>Fair</span><span>Good</span><span>Excellent</span></div>
+</div>
+<div style="margin-top:8px;">
+<div style="font-size:0.85em; color:#64748b;">Match to Description:</div>
+<div class="rating-scale" id="mos-a-match"></div>
+<div class="rating-labels"><span>No match</span><span></span><span>Partial</span><span></span><span>Perfect</span></div>
+</div>
+</div>
+
+<div class="mos-item">
+<h3>Sample B</h3>
+<audio id="audio-b" controls preload="none"></audio>
+<div style="margin-top:8px;">
+<div style="font-size:0.85em; color:#64748b;">Overall Quality:</div>
+<div class="rating-scale" id="mos-b-quality"></div>
+<div class="rating-labels"><span>Bad</span><span>Poor</span><span>Fair</span><span>Good</span><span>Excellent</span></div>
+</div>
+<div style="margin-top:8px;">
+<div style="font-size:0.85em; color:#64748b;">Match to Description:</div>
+<div class="rating-scale" id="mos-b-match"></div>
+<div class="rating-labels"><span>No match</span><span></span><span>Partial</span><span></span><span>Perfect</span></div>
+</div>
+</div>
+</div>
+
+<!-- Task 2: Preference -->
+<div class="task-label" style="margin-top:16px;">Task 2: Which sample better matches the description?</div>
+<div class="pref-group" id="pref-group"></div>
+</div>
+
+<div class="nav">
+<button class="btn-prev" id="btn-prev" onclick="prevPair()">← Previous</button>
+<button class="btn-next" id="btn-next" onclick="nextPair()">Next →</button>
+</div>
+</div>
+
+<!-- Done page -->
+<div id="done-page" style="display:none;">
+<div class="results">
+<h2>Evaluation Complete!</h2>
+<p>Thank you for your evaluation.</p>
+<p id="results-summary"></p>
+<button id="download-btn" onclick="downloadResults()">Download Results (JSON)</button>
+</div>
+</div>
+</div>
+
+<script>
+let evalConfig = null;
+let currentIdx = 0;
+let responses = [];
+let evaluatorId = '';
+
+// Load config
+fetch('eval_config.json')
+  .then(r => r.json())
+  .then(data => { evalConfig = data; })
+  .catch(e => console.error('Failed to load config:', e));
+
+function startEval() {
+  evaluatorId = document.getElementById('evaluator-id').value.trim() || 'anonymous';
+  if (!evalConfig) { alert('Config not loaded yet. Please wait.'); return; }
+  responses = evalConfig.pairs.map(p => ({
+    id: p.id, style: p.style,
+    mos_a_quality: 0, mos_a_match: 0,
+    mos_b_quality: 0, mos_b_match: 0,
+    preference: '',
+  }));
+  document.getElementById('instructions-page').style.display = 'none';
+  document.getElementById('eval-page').style.display = 'block';
+  showPair(0);
+}
+
+function createRatingButtons(containerId, responseKey) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'rating-btn';
+    btn.textContent = i;
+    btn.onclick = () => {
+      container.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      responses[currentIdx][responseKey] = i;
+      checkComplete();
+    };
+    container.appendChild(btn);
+  }
+}
+
+function createPrefButtons() {
+  const container = document.getElementById('pref-group');
+  container.innerHTML = '';
+  ['A is better', 'No preference', 'B is better'].forEach(label => {
+    const btn = document.createElement('button');
+    btn.className = 'pref-btn';
+    btn.textContent = label;
+    btn.onclick = () => {
+      container.querySelectorAll('.pref-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      responses[currentIdx].preference = label;
+      checkComplete();
+    };
+    container.appendChild(btn);
+  });
+}
+
+function showPair(idx) {
+  currentIdx = idx;
+  const pair = evalConfig.pairs[idx];
+  const resp = responses[idx];
+
+  document.getElementById('pair-title').textContent = `${idx + 1} / ${evalConfig.n_pairs} — ${pair.style}`;
+  document.getElementById('pair-description').textContent = `"${pair.description}"`;
+
+  document.getElementById('audio-a').src = 'audio_ogg/' + pair.a_file.replace('.wav', '.ogg');
+  document.getElementById('audio-b').src = 'audio_ogg/' + pair.b_file.replace('.wav', '.ogg');
+
+  // Create buttons
+  createRatingButtons('mos-a-quality', 'mos_a_quality');
+  createRatingButtons('mos-a-match', 'mos_a_match');
+  createRatingButtons('mos-b-quality', 'mos_b_quality');
+  createRatingButtons('mos-b-match', 'mos_b_match');
+  createPrefButtons();
+
+  // Restore saved responses
+  if (resp.mos_a_quality) selectBtn('mos-a-quality', resp.mos_a_quality);
+  if (resp.mos_a_match) selectBtn('mos-a-match', resp.mos_a_match);
+  if (resp.mos_b_quality) selectBtn('mos-b-quality', resp.mos_b_quality);
+  if (resp.mos_b_match) selectBtn('mos-b-match', resp.mos_b_match);
+  if (resp.preference) {
+    document.getElementById('pref-group').querySelectorAll('.pref-btn').forEach(b => {
+      if (b.textContent === resp.preference) b.classList.add('selected');
+    });
+  }
+
+  // Progress
+  const pct = ((idx + 1) / evalConfig.n_pairs * 100).toFixed(0);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = `${idx + 1} of ${evalConfig.n_pairs}`;
+
+  // Nav
+  document.getElementById('btn-prev').style.visibility = idx === 0 ? 'hidden' : 'visible';
+  document.getElementById('btn-next').textContent = idx === evalConfig.n_pairs - 1 ? 'Finish ✓' : 'Next →';
+
+  checkComplete();
+}
+
+function selectBtn(containerId, value) {
+  const btns = document.getElementById(containerId).querySelectorAll('.rating-btn');
+  btns.forEach(b => { if (parseInt(b.textContent) === value) b.classList.add('selected'); });
+}
+
+function checkComplete() {
+  const r = responses[currentIdx];
+  const complete = r.mos_a_quality && r.mos_a_match && r.mos_b_quality && r.mos_b_match && r.preference;
+  document.getElementById('btn-next').disabled = !complete;
+}
+
+function nextPair() {
+  if (currentIdx < evalConfig.n_pairs - 1) {
+    showPair(currentIdx + 1);
+  } else {
+    finishEval();
+  }
+}
+
+function prevPair() {
+  if (currentIdx > 0) showPair(currentIdx - 1);
+}
+
+function finishEval() {
+  document.getElementById('eval-page').style.display = 'none';
+  document.getElementById('done-page').style.display = 'block';
+
+  // Compute summary
+  let baselineQuality = 0, bestQuality = 0, baselineMatch = 0, bestMatch = 0;
+  let prefA = 0, prefB = 0, prefNone = 0;
+  let baselineWins = 0, bestWins = 0;
+
+  responses.forEach((r, i) => {
+    const pair = evalConfig.pairs[i];
+    const aIsBaseline = pair.a_type === 'baseline';
+
+    const bq = aIsBaseline ? r.mos_a_quality : r.mos_b_quality;
+    const bestq = aIsBaseline ? r.mos_b_quality : r.mos_a_quality;
+    const bm = aIsBaseline ? r.mos_a_match : r.mos_b_match;
+    const bestm = aIsBaseline ? r.mos_b_match : r.mos_a_match;
+
+    baselineQuality += bq;
+    bestQuality += bestq;
+    baselineMatch += bm;
+    bestMatch += bestm;
+
+    if (r.preference === 'A is better') {
+      if (aIsBaseline) baselineWins++; else bestWins++;
+    } else if (r.preference === 'B is better') {
+      if (aIsBaseline) bestWins++; else baselineWins++;
+    }
+  });
+
+  const n = responses.length;
+  document.getElementById('results-summary').innerHTML =
+    `<br>Baseline MOS (quality): ${(baselineQuality/n).toFixed(2)}<br>` +
+    `Best-of-9 MOS (quality): ${(bestQuality/n).toFixed(2)}<br>` +
+    `Baseline MOS (match): ${(baselineMatch/n).toFixed(2)}<br>` +
+    `Best-of-9 MOS (match): ${(bestMatch/n).toFixed(2)}<br>` +
+    `Preference: Baseline ${baselineWins}, Best-of-9 ${bestWins}, Tie ${n - baselineWins - bestWins}`;
+}
+
+function downloadResults() {
+  const output = {
+    evaluator: evaluatorId,
+    timestamp: new Date().toISOString(),
+    responses: responses.map((r, i) => ({
+      ...r,
+      a_type: evalConfig.pairs[i].a_type,
+      b_type: evalConfig.pairs[i].b_type,
+    })),
+  };
+  const blob = new Blob([JSON.stringify(output, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `musiccritic_eval_${evaluatorId}_${Date.now()}.json`;
+  a.click();
+}
+</script>
+</body>
+</html>
